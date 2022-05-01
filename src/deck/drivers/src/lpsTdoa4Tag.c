@@ -20,7 +20,7 @@
 #include "eventtrigger.h"        // add eventtrigger logging
 
 // declare events
-EVENTTRIGGER(interRange, uint8, remote_id, float, inter_ranging, float, rAgent_vx, float, rAgent_vy, float, rAgent_yr, float, rAgent_h)
+EVENTTRIGGER(interRange, uint8, remote_id, float, inter_ranging, float, rAgent_vx, float, rAgent_vy, float, rAgent_yr) //, float, rAgent_h)
 
 
 #define TDOA4_RECEIVE_TIMEOUT 10000
@@ -527,7 +527,7 @@ static void handleRangePacket(const uint32_t rxTime, const packet_t* rxPacket, c
                 eventTrigger_interRange_payload.rAgent_vx = remoteAgentInfo.remoteData.rAgent_data[0];
                 eventTrigger_interRange_payload.rAgent_vy = remoteAgentInfo.remoteData.rAgent_data[1];
                 eventTrigger_interRange_payload.rAgent_yr = remoteAgentInfo.remoteData.rAgent_data[2];
-                eventTrigger_interRange_payload.rAgent_h  = remoteAgentInfo.remoteData.rAgent_data[3];
+                // eventTrigger_interRange_payload.rAgent_h  = remoteAgentInfo.remoteData.rAgent_data[3];
                 eventTrigger(&eventTrigger_interRange);
             }
         }
