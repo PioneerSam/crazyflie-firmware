@@ -123,6 +123,12 @@ static bool robustTdoa = false;
 // disable sensors for CF Bolt testing
 static bool enableSensors = false;
 
+// interAgent comm. data
+static float swarmVx;
+static float swarmVy;
+static float swarmGz;
+static float swarmh;
+
 /**
  * Quadrocopter State
  *
@@ -272,6 +278,14 @@ static void kalmanTask(void* parameters) {
     if (doneUpdate)
     {
       kalmanCoreFinalize(&coreData, osTick);
+      // --- prepare for the inter-agent comm. data --- //
+      swarmVx = coreData.R[0][0] * coreData.S[KC_STATE_PX] + coreData.R[0][1] * coreData.S[KC_STATE_PY] + coreData.R[0][2] * coreData.S[KC_STATE_PZ];
+      swarmVy = coreData.R[1][0] * coreData.S[KC_STATE_PX] + coreData.R[1][1] * coreData.S[KC_STATE_PY] + coreData.R[1][2] * coreData.S[KC_STATE_PZ];
+      //swarmGz = atan2f(2*(q[1]*q[2]+q[0]*q[3]) , q[0]*q[0] + q[1]*q[1] - q[2]*q[2] - q[3]*q[3]);
+      swarmGz = gyroLatest.z * DEG_TO_RAD;
+      swarmh  = coreData.S[KC_STATE_Z];
+      // ---------------------------------------------- //
+
       STATS_CNT_RATE_EVENT(&finalizeCounter);
       if (! kalmanSupervisorIsStateWithinBounds(&coreData)) {
         resetEstimation = true;
@@ -471,11 +485,19 @@ void estimatorKalmanGetEstimatedRot(float * rotationMatrix) {
 }
 
 // [change] access current state and send through UWB (connect with lpsTdoa4Tag.c)
-void estimatorKalmanGetSharedInfo(float* x, float* y, float* z) {
-  *x = coreData.S[KC_STATE_X];
-  *y = coreData.S[KC_STATE_Y];
-  *z = coreData.S[KC_STATE_Z];
+// void estimatorKalmanGetSharedInfo(float* x, float* y, float* z) {
+//   *x = coreData.S[KC_STATE_X];
+//   *y = coreData.S[KC_STATE_Y];
+//   *z = coreData.S[KC_STATE_Z];
+// }
+
+void estimatorKalmanGetSharedInfo(float* vx, float* vy, float* gyroZ, float* height) {
+  *vx = swarmVx;
+  *vy = swarmVy;
+  *gyroZ = swarmGz;
+  *height = swarmh;
 }
+
 
 /**
  * Variables and results from the Extended Kalman Filter

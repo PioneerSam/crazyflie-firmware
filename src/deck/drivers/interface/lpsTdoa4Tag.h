@@ -3,7 +3,7 @@
     Created on : Nov.,21,2020
         Author : Wenda Zhao
         Email  : wenda.zhao@robotics.utias.utoronto.ca
-    header file for TDoA 4 structure (enabling ranging between CFs)
+    header file for TDOA 4 structure (enabling ranging between CFs)
 */
 
 #ifndef __LPS_TDOA4_TAG_H__
@@ -48,7 +48,7 @@
 #define ANCHOR_MIN_TX_FREQ 20.0
 
 
-#define ANTENNA_OFFSET 154.6   // In meters
+#define ANTENNA_OFFSET 154.6   // In meters, tune this for range calibration   
 #define ANTENNA_DELAY  ((ANTENNA_OFFSET*499.2e6*128)/299792458.0) // In radio tick
 #define MIN_TOF ANTENNA_DELAY
 

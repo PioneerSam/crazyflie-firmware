@@ -70,4 +70,4 @@ void estimatorKalmanGetEstimatedPos(point_t* pos);
  */
 void estimatorKalmanGetEstimatedRot(float * rotationMatrix);
 // [change]
-void estimatorKalmanGetSharedInfo(float* x, float* y, float* z);
+void estimatorKalmanGetSharedInfo(float* vx, float* vy, float* gyroZ, float* height);

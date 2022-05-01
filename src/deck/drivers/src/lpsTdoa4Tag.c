@@ -20,7 +20,7 @@
 #include "eventtrigger.h"        // add eventtrigger logging
 
 // declare events
-EVENTTRIGGER(interRange, uint8, remote_id, float, inter_ranging, float, rAgent_x, float, rAgent_y, float, rAgent_z)
+EVENTTRIGGER(interRange, uint8, remote_id, float, inter_ranging, float, rAgent_vx, float, rAgent_vy, float, rAgent_yr, float, rAgent_h)
 
 
 #define TDOA4_RECEIVE_TIMEOUT 10000
@@ -104,8 +104,8 @@ typedef struct {
 
 // lppShortAnchorPos_s is defined in locodeck.h, here we define a new msg for TDoA4 
 // [New] lpp packet (transmission data): limitation is 11 float num (TODO: validate)
-struct lppShortAgentPosition_s {
-    float rAgent_pos[3];
+struct lppShortAgentData_s {
+    float rAgent_data[4];
 } __attribute__((packed));
 
 // Data struct for remote agent info 
@@ -113,7 +113,7 @@ static struct remoteAgentInfo_s{
     uint8_t remoteAgentID;           // source Agent (where the msg is sent from)
     int destAgentID;             // destination Agent (where the msg is sent to)
     bool hasDistance;
-    struct lppShortAgentPosition_s remoteData;
+    struct lppShortAgentData_s remoteData;
     float ranging;
 }remoteAgentInfo;                
 
@@ -398,17 +398,19 @@ static uint16_t calculateDistance(anchorContext_t* anchorCtx, int remoteRxSeqNr,
 static void handleLppShortPacket(const uint8_t *data, const int length) {
   uint8_t type = data[0];
   if (type == LPP_SHORT_AGENT_INFO) {
-    struct lppShortAgentPosition_s *rData = (struct lppShortAgentPosition_s*)&data[1];
+    struct lppShortAgentData_s *rData = (struct lppShortAgentData_s*)&data[1];
         // save and use the remote agent pos data                 
-        remoteAgentInfo.remoteData.rAgent_pos[0] = rData->rAgent_pos[0];     
-        remoteAgentInfo.remoteData.rAgent_pos[1] = rData->rAgent_pos[1];     
-        remoteAgentInfo.remoteData.rAgent_pos[2] = rData->rAgent_pos[2];     
+        remoteAgentInfo.remoteData.rAgent_data[0] = rData->rAgent_data[0];     
+        remoteAgentInfo.remoteData.rAgent_data[1] = rData->rAgent_data[1];     
+        remoteAgentInfo.remoteData.rAgent_data[2] = rData->rAgent_data[2];     
+        remoteAgentInfo.remoteData.rAgent_data[3] = rData->rAgent_data[3];    
     }
     else{
         // no remote agent pos data
-        remoteAgentInfo.remoteData.rAgent_pos[0] = 255;     
-        remoteAgentInfo.remoteData.rAgent_pos[1] = 255;     
-        remoteAgentInfo.remoteData.rAgent_pos[2] = 255; 
+        remoteAgentInfo.remoteData.rAgent_data[0] = 255;     
+        remoteAgentInfo.remoteData.rAgent_data[1] = 255;     
+        remoteAgentInfo.remoteData.rAgent_data[2] = 255; 
+        remoteAgentInfo.remoteData.rAgent_data[3] = 255; 
     }
 }
 
@@ -522,9 +524,10 @@ static void handleRangePacket(const uint32_t rxTime, const packet_t* rxPacket, c
                 // call Event trigger logging
                 eventTrigger_interRange_payload.remote_id = remoteAgentInfo.remoteAgentID;
                 eventTrigger_interRange_payload.inter_ranging = remoteAgentInfo.ranging;
-                eventTrigger_interRange_payload.rAgent_x = remoteAgentInfo.remoteData.rAgent_pos[0];
-                eventTrigger_interRange_payload.rAgent_y = remoteAgentInfo.remoteData.rAgent_pos[1];
-                eventTrigger_interRange_payload.rAgent_z = remoteAgentInfo.remoteData.rAgent_pos[2];
+                eventTrigger_interRange_payload.rAgent_vx = remoteAgentInfo.remoteData.rAgent_data[0];
+                eventTrigger_interRange_payload.rAgent_vy = remoteAgentInfo.remoteData.rAgent_data[1];
+                eventTrigger_interRange_payload.rAgent_yr = remoteAgentInfo.remoteData.rAgent_data[2];
+                eventTrigger_interRange_payload.rAgent_h  = remoteAgentInfo.remoteData.rAgent_data[3];
                 eventTrigger(&eventTrigger_interRange);
             }
         }
@@ -692,18 +695,18 @@ static void setTxData(dwDevice_t *dev)
     txPacket.payload[rangePacketSize + LPP_HEADER] = SHORT_LPP;
     txPacket.payload[rangePacketSize + LPP_TYPE] = LPP_SHORT_AGENT_INFO;   // [Change] define a new type for tdoa4 inter-drone msg
 
-    struct lppShortAgentPosition_s *pos = (struct lppShortAgentPosition_s*) &txPacket.payload[rangePacketSize + LPP_PAYLOAD];
+    struct lppShortAgentData_s *rData = (struct lppShortAgentData_s*) &txPacket.payload[rangePacketSize + LPP_PAYLOAD];
     /*------ Send the info. of interest--------*/
     // For more agents and anchors, LPP packet size will be limited
     // float dummy_pos[3] = {(float)AGENT_ID+(float)0.15, (float)AGENT_ID+(float)0.25, (float)AGENT_ID+(float)0.35};
-    // memcpy(pos->rAgent_pos, dummy_pos, 3 * sizeof(float));
+    // memcpy(pos->rAgent_data, dummy_data, 4 * sizeof(float));
 
     /* share current position state from EKF using UWB*/
     // consider a better data structure design
-    float shared_pos[3];  
-    estimatorKalmanGetSharedInfo(&shared_pos[0], &shared_pos[1], &shared_pos[2]);
-    memcpy(pos->rAgent_pos, shared_pos, 3 * sizeof(float));
-    lppLength = 2 + sizeof(struct lppShortAgentPosition_s);
+    float shared_data[4];  
+    estimatorKalmanGetSharedInfo(&shared_data[0], &shared_data[1], &shared_data[2], &shared_data[3]);
+    memcpy(rData->rAgent_data, shared_data, 4 * sizeof(float));
+    lppLength = 2 + sizeof(struct lppShortAgentData_s);
 
     dwSetData(dev, (uint8_t*)&txPacket, MAC802154_HEADER_LENGTH + rangePacketSize + lppLength);
 }
