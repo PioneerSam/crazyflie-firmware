@@ -20,8 +20,9 @@
 #include "eventtrigger.h"        // add eventtrigger logging
 
 // declare events
-EVENTTRIGGER(interRange, uint8, remote_id, float, inter_ranging, float, rAgent_vx, float, rAgent_vy, float, rAgent_yr) //, float, rAgent_h)
-
+EVENTTRIGGER(interRange, uint8, remote_id, float, inter_ranging) 
+EVENTTRIGGER(rAgent, float, rAgent_vx, float, rAgent_vy, float, rAgent_yr, float, rAgent_h)      // remote agent
+EVENTTRIGGER(lAgent, float, lAgent_vx, float, lAgent_vy, float, lAgent_yr, float, lAgent_h)      // local  agent
 
 #define TDOA4_RECEIVE_TIMEOUT 10000
 // Packet formats
@@ -33,7 +34,7 @@ EVENTTRIGGER(interRange, uint8, remote_id, float, inter_ranging, float, rAgent_v
 static const uint8_t base_address[] = {0,0,0,0,0,0,0xcf,0xbc};
 
 // [change]: global variable for agent id
-int AGENT_ID = 2;                
+int AGENT_ID = 1;                
 // Agent msg context
 typedef struct {
     uint8_t id;
@@ -521,14 +522,27 @@ static void handleRangePacket(const uint32_t rxTime, const packet_t* rxPacket, c
                 handleLppPacket(dataLength, rangeDataLength, rxPacket);
 
                 // After (1) get remoteAgent ID, (2) compute the ranging, and (3) get the remoteAgent pos
-                // call Event trigger logging
+
+                // interRange event
                 eventTrigger_interRange_payload.remote_id = remoteAgentInfo.remoteAgentID;
                 eventTrigger_interRange_payload.inter_ranging = remoteAgentInfo.ranging;
-                eventTrigger_interRange_payload.rAgent_vx = remoteAgentInfo.remoteData.rAgent_data[0];
-                eventTrigger_interRange_payload.rAgent_vy = remoteAgentInfo.remoteData.rAgent_data[1];
-                eventTrigger_interRange_payload.rAgent_yr = remoteAgentInfo.remoteData.rAgent_data[2];
-                // eventTrigger_interRange_payload.rAgent_h  = remoteAgentInfo.remoteData.rAgent_data[3];
+                // rAgent event
+                eventTrigger_rAgent_payload.rAgent_vx = remoteAgentInfo.remoteData.rAgent_data[0];
+                eventTrigger_rAgent_payload.rAgent_vy = remoteAgentInfo.remoteData.rAgent_data[1];
+                eventTrigger_rAgent_payload.rAgent_yr = remoteAgentInfo.remoteData.rAgent_data[2];
+                eventTrigger_rAgent_payload.rAgent_h  = remoteAgentInfo.remoteData.rAgent_data[3];
+                // lAgent event
+                float local_data[4];  
+                // call the function to get current local data
+                estimatorKalmanGetSharedInfo(&local_data[0], &local_data[1], &local_data[2], &local_data[3]);
+                eventTrigger_lAgent_payload.lAgent_vx = local_data[0];
+                eventTrigger_lAgent_payload.lAgent_vy = local_data[1];
+                eventTrigger_lAgent_payload.lAgent_yr = local_data[2];
+                eventTrigger_lAgent_payload.lAgent_h = local_data[3];
+                // call the event logging
                 eventTrigger(&eventTrigger_interRange);
+                eventTrigger(&eventTrigger_rAgent);
+                eventTrigger(&eventTrigger_lAgent);
             }
         }
     } else {
