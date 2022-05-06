@@ -48,8 +48,8 @@
 #define ANCHOR_MIN_TX_FREQ 20.0
 
 
-#define ANTENNA_OFFSET 154.6   // In meters, tune this for range calibration   
-#define ANTENNA_DELAY  ((ANTENNA_OFFSET*499.2e6*128)/299792458.0) // In radio tick
+#define ANTENNA_OFFSET_INTER 154.3   // In meters, tune this for range calibration   (original: 154.6)
+#define ANTENNA_DELAY  ((ANTENNA_OFFSET_INTER*499.2e6*128)/299792458.0) // In radio tick
 #define MIN_TOF ANTENNA_DELAY
 
 #define MAX_CLOCK_DEVIATION_SPEC 10e-6

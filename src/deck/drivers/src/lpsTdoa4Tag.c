@@ -34,7 +34,7 @@ EVENTTRIGGER(lAgent, float, lAgent_vx, float, lAgent_vy, float, lAgent_yr, float
 static const uint8_t base_address[] = {0,0,0,0,0,0,0xcf,0xbc};
 
 // [change]: global variable for agent id
-int AGENT_ID = 1;                
+int AGENT_ID = 7;                
 // Agent msg context
 typedef struct {
     uint8_t id;
@@ -512,7 +512,7 @@ static void handleRangePacket(const uint32_t rxTime, const packet_t* rxPacket, c
                 float M_PER_TICK = 0.0046917639786157855;
                 // [LOG] log the ranging distance
 
-                remoteAgentInfo.ranging = (float) distance * M_PER_TICK - (float)ANTENNA_OFFSET;   // save the range in meters. 
+                remoteAgentInfo.ranging = (float) distance * M_PER_TICK - (float)ANTENNA_OFFSET_INTER;   // save the range in meters. 
                 log_range = remoteAgentInfo.ranging;
 
                 // only extract remote agent pos and event logging when we have valid ranging info.
