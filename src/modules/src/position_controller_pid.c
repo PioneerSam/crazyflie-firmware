@@ -145,8 +145,9 @@ static struct this_s this = {
   #ifdef IMPROVED_BARO_Z_HOLD
     .thrustBase = 38000,
   #else
-    .thrustBase = 24500,       // tuned param for CF Bolt take off
-  // .thrustBase = 36000,    // original
+
+    .thrustBase = 24500,       // tuned param for CF Bolt take off 
+  // .thrustBase = 36000,      // original
   #endif
   .thrustMin  = 20000,
 };

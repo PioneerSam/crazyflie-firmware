@@ -522,7 +522,6 @@ static void handleRangePacket(const uint32_t rxTime, const packet_t* rxPacket, c
                 handleLppPacket(dataLength, rangeDataLength, rxPacket);
 
                 // After (1) get remoteAgent ID, (2) compute the ranging, and (3) get the remoteAgent pos
-
                 // interRange event
                 eventTrigger_interRange_payload.remote_id = remoteAgentInfo.remoteAgentID;
                 eventTrigger_interRange_payload.inter_ranging = remoteAgentInfo.ranging;
