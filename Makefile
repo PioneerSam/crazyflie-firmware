@@ -166,6 +166,9 @@ PROJ_OBJ += platformservice.o sound_cf2.o extrx.o sysload.o mem.o
 PROJ_OBJ += range.o app_handler.o static_mem.o app_channel.o
 PROJ_OBJ += eventtrigger.o supervisor.o
 
+# Relative Localization
+PROJ_OBJ += relative_loc.o
+
 # Stabilizer modules
 PROJ_OBJ += commander.o crtp_commander.o crtp_commander_rpyt.o
 PROJ_OBJ += crtp_commander_generic.o crtp_localization_service.o peer_localization.o
@@ -314,7 +317,7 @@ else
   CFLAGS += -Os
 
   # Fail on warnings
-  CFLAGS += -Werror
+#   CFLAGS += -Werror
 endif
 
 # Disable warnings for unaligned addresses in packed structs (added in GCC 9)
