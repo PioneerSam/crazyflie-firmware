@@ -169,6 +169,9 @@ PROJ_OBJ += eventtrigger.o supervisor.o
 # Relative Localization
 PROJ_OBJ += relative_loc.o
 
+# Relative Control
+PROJ_OBJ += relative_control.o
+
 # Stabilizer modules
 PROJ_OBJ += commander.o crtp_commander.o crtp_commander_rpyt.o
 PROJ_OBJ += crtp_commander_generic.o crtp_localization_service.o peer_localization.o
@@ -217,7 +220,7 @@ PROJ_OBJ += outlierFilter.o
 PROJ_OBJ += flowdeck_v1v2.o
 PROJ_OBJ += oa.o
 PROJ_OBJ += multiranger.o
-PROJ_OBJ += lighthouse.o
+# PROJ_OBJ += lighthouse.o
 PROJ_OBJ += activeMarkerDeck.o
 
 # Uart2 Link for CRTP communication is not compatible with decks using uart2

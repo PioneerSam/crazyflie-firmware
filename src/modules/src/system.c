@@ -71,6 +71,10 @@
 #include "cfassert.h"
 #include "i2cdev.h"
 
+// [Sam] for relative localization
+#include "relative_loc.h"
+#include "relative_control.h"
+
 #ifndef START_DISARMED
 #define ARM_INIT true
 #else
@@ -191,6 +195,10 @@ void systemTask(void *arg)
   deckInit();
   estimator = deckGetRequiredEstimator();
   stabilizerInit(estimator);
+    // [Sam] for relative localization and control
+  relativeLocoInit();
+  // relativeControlInit();
+
   if (deckGetRequiredLowInterferenceRadioMode() && platformConfigPhysicalLayoutAntennasAreClose())
   {
     platformSetLowInterferenceRadioMode();

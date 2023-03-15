@@ -5,6 +5,7 @@
         "**/bower_components": true
     },
     "files.associations": {
-        "eventtrigger.h": "c"
+        "eventtrigger.h": "c",
+        "mm_tdoa_robust.h": "c"
     }
 }

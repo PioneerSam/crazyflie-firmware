@@ -138,7 +138,8 @@ typedef enum {
   cfgLongPreamble,
 } ConfigField;
 
-
+// [Sam] relative localization function signature
+bool getRemoteInfo(float* dij, float* vxj, float* vyj, float* rj, float* hj);
 
 extern int AGENT_ID;
 

@@ -34,7 +34,7 @@ EVENTTRIGGER(lAgent, float, lAgent_vx, float, lAgent_vy, float, lAgent_yr, float
 static const uint8_t base_address[] = {0,0,0,0,0,0,0xcf,0xbc};
 
 // [change]: global variable for agent id
-int AGENT_ID = 7;                
+int AGENT_ID = 2;                
 // Agent msg context
 typedef struct {
     uint8_t id;
@@ -103,10 +103,15 @@ typedef struct {
   uint8_t remoteAnchorData;
 } __attribute__((packed)) rangePacket3_t;
 
-// lppShortAnchorPos_s is defined in locodeck.h, here we define a new msg for TDoA4 
+// // lppShortAnchorPos_s is defined in locodeck.h, here we define a new msg for TDoA4 
+// // [New] lpp packet (transmission data): limitation is 11 float num (TODO: validate)
+// struct lppShortAgentInputs {
+//     float rAgent_data[4];
+// } __attribute__((packed));
+
 // [New] lpp packet (transmission data): limitation is 11 float num (TODO: validate)
-struct lppShortAgentData_s {
-    float rAgent_data[4];
+struct lppShortAgentInput_s {
+    float agent_info[4];         // vx, vy, gz, h
 } __attribute__((packed));
 
 // Data struct for remote agent info 
@@ -114,7 +119,7 @@ static struct remoteAgentInfo_s{
     uint8_t remoteAgentID;           // source Agent (where the msg is sent from)
     int destAgentID;             // destination Agent (where the msg is sent to)
     bool hasDistance;
-    struct lppShortAgentData_s remoteData;
+    struct lppShortAgentInput_s remoteData;
     float ranging;
 }remoteAgentInfo;                
 
@@ -122,6 +127,21 @@ static struct remoteAgentInfo_s{
 static float log_range;          // distance 
 static int   log_rAgentID;       // remote agent ID 
 
+// [Sam] Define a state to contain the remote agent states (input) for relative localization
+typedef struct{
+  float_t inter_range;
+  float_t remote_vx;
+  float_t remote_vy;
+  float_t remote_gz;
+  float_t remote_h;
+
+  uint8_t remoteAgentID;           // source Agent (where the msg is sent from)
+
+  bool refresh;
+  bool keep_flying;
+}swarminfo_t;
+// Initialize the state
+static swarminfo_t ra_inputstate;
 
 /* ---------------------------- help functions ---------------------------- */
 static anchorContext_t* getContext(uint8_t anchorId) {
@@ -399,19 +419,30 @@ static uint16_t calculateDistance(anchorContext_t* anchorCtx, int remoteRxSeqNr,
 static void handleLppShortPacket(const uint8_t *data, const int length) {
   uint8_t type = data[0];
   if (type == LPP_SHORT_AGENT_INFO) {
-    struct lppShortAgentData_s *rData = (struct lppShortAgentData_s*)&data[1];
-        // save and use the remote agent pos data                 
-        remoteAgentInfo.remoteData.rAgent_data[0] = rData->rAgent_data[0];     
-        remoteAgentInfo.remoteData.rAgent_data[1] = rData->rAgent_data[1];     
-        remoteAgentInfo.remoteData.rAgent_data[2] = rData->rAgent_data[2];     
-        remoteAgentInfo.remoteData.rAgent_data[3] = rData->rAgent_data[3];    
+    struct lppShortAgentInput_s *rData = (struct lppShortAgentInput_s*)&data[1];
+        // save and use the remote agent pos data  
+        // [Sam] Commented               
+        // remoteAgentInfo.remoteData.rAgent_data[0] = rData->rAgent_data[0];     
+        // remoteAgentInfo.remoteData.rAgent_data[1] = rData->rAgent_data[1];     
+        // remoteAgentInfo.remoteData.rAgent_data[2] = rData->rAgent_data[2];     
+        // remoteAgentInfo.remoteData.rAgent_data[3] = rData->rAgent_data[3]; 
+        // [Sam] Saved the recieved package
+        ra_inputstate.remote_vx = rData->agent_info[0];
+        ra_inputstate.remote_vy = rData->agent_info[1];
+        ra_inputstate.remote_gz = rData->agent_info[2];
+        ra_inputstate.remote_h = rData->agent_info[3];
     }
     else{
         // no remote agent pos data
-        remoteAgentInfo.remoteData.rAgent_data[0] = 255;     
-        remoteAgentInfo.remoteData.rAgent_data[1] = 255;     
-        remoteAgentInfo.remoteData.rAgent_data[2] = 255; 
-        remoteAgentInfo.remoteData.rAgent_data[3] = 255; 
+        // remoteAgentInfo.remoteData.rAgent_data[0] = 255;     
+        // remoteAgentInfo.remoteData.rAgent_data[1] = 255;     
+        // remoteAgentInfo.remoteData.rAgent_data[2] = 255; 
+        // remoteAgentInfo.remoteData.rAgent_data[3] = 255; 
+
+        ra_inputstate.remote_vx = 255;
+        ra_inputstate.remote_vy = 255;
+        ra_inputstate.remote_gz = 255;
+        ra_inputstate.remote_h = 255;
     }
 }
 
@@ -486,6 +517,7 @@ static void handleRangePacket(const uint32_t rxTime, const packet_t* rxPacket, c
   log_rAgentID = remote_id;                                      // [LOG] log the remote Agent ID 
 
   remoteAgentInfo.remoteAgentID = remote_id;                     // save to remoteAgent data structure
+  ra_inputstate.remoteAgentID = remote_id;
 
   ctx.anchorRxCount[remote_id]++;
   anchorContext_t* anchorCtx = getContext(remote_id);            // get the msg from the packet
@@ -512,8 +544,12 @@ static void handleRangePacket(const uint32_t rxTime, const packet_t* rxPacket, c
                 float M_PER_TICK = 0.0046917639786157855;
                 // [LOG] log the ranging distance
 
-                remoteAgentInfo.ranging = (float) distance * M_PER_TICK - (float)ANTENNA_OFFSET_INTER;   // save the range in meters. 
-                log_range = remoteAgentInfo.ranging;
+                // [Sam] Commented
+                // remoteAgentInfo.ranging = (float) distance * M_PER_TICK - (float)ANTENNA_OFFSET_INTER;   // save the range in meters. 
+                // log_range = remoteAgentInfo.ranging;
+
+                // [Sam] Once we have the ranging info, we can save it in our listener state
+                ra_inputstate.inter_range = (float) distance * M_PER_TICK - (float)ANTENNA_OFFSET_INTER;
 
                 // only extract remote agent pos and event logging when we have valid ranging info.
                 // [important] get transmitted info. (dummy data for now)  (changed from lpsTdoa3Tag.c (rxcallback))
@@ -521,27 +557,28 @@ static void handleRangePacket(const uint32_t rxTime, const packet_t* rxPacket, c
                 int rangeDataLength = updateRemoteAgentData(rangePacket);   // get the length of LPP packets 
                 handleLppPacket(dataLength, rangeDataLength, rxPacket);
 
-                // After (1) get remoteAgent ID, (2) compute the ranging, and (3) get the remoteAgent pos
-                // interRange event
-                eventTrigger_interRange_payload.remote_id = remoteAgentInfo.remoteAgentID;
-                eventTrigger_interRange_payload.inter_ranging = remoteAgentInfo.ranging;
-                // rAgent event
-                eventTrigger_rAgent_payload.rAgent_vx = remoteAgentInfo.remoteData.rAgent_data[0];
-                eventTrigger_rAgent_payload.rAgent_vy = remoteAgentInfo.remoteData.rAgent_data[1];
-                eventTrigger_rAgent_payload.rAgent_yr = remoteAgentInfo.remoteData.rAgent_data[2];
-                eventTrigger_rAgent_payload.rAgent_h  = remoteAgentInfo.remoteData.rAgent_data[3];
-                // lAgent event
-                float local_data[4];  
-                // call the function to get current local data
-                estimatorKalmanGetSharedInfo(&local_data[0], &local_data[1], &local_data[2], &local_data[3]);
-                eventTrigger_lAgent_payload.lAgent_vx = local_data[0];
-                eventTrigger_lAgent_payload.lAgent_vy = local_data[1];
-                eventTrigger_lAgent_payload.lAgent_yr = local_data[2];
-                eventTrigger_lAgent_payload.lAgent_h = local_data[3];
-                // call the event logging
-                eventTrigger(&eventTrigger_interRange);
-                eventTrigger(&eventTrigger_rAgent);
-                eventTrigger(&eventTrigger_lAgent);
+                // // After (1) get remoteAgent ID, (2) compute the ranging, and (3) get the remoteAgent pos
+                // // interRange event
+                // eventTrigger_interRange_payload.remote_id = remoteAgentInfo.remoteAgentID;
+                // eventTrigger_interRange_payload.inter_ranging = remoteAgentInfo.ranging;
+                // // rAgent event
+                // eventTrigger_rAgent_payload.rAgent_vx = remoteAgentInfo.remoteData.rAgent_data[0];
+                // eventTrigger_rAgent_payload.rAgent_vy = remoteAgentInfo.remoteData.rAgent_data[1];
+                // eventTrigger_rAgent_payload.rAgent_yr = remoteAgentInfo.remoteData.rAgent_data[2];
+                // eventTrigger_rAgent_payload.rAgent_h  = remoteAgentInfo.remoteData.rAgent_data[3];
+                // // lAgent event
+                // float local_data[4];  
+                // // call the function to get current local data
+                // // [Sam] Changed for local agent obtained from kalman filter
+                // estimatorKalmanGetSwarmInfo(&local_data[0], &local_data[1], &local_data[2], &local_data[3]);
+                // eventTrigger_lAgent_payload.lAgent_vx = local_data[0];
+                // eventTrigger_lAgent_payload.lAgent_vy = local_data[1];
+                // eventTrigger_lAgent_payload.lAgent_yr = local_data[2];
+                // eventTrigger_lAgent_payload.lAgent_h = local_data[3];
+                // // call the event logging
+                // eventTrigger(&eventTrigger_interRange);
+                // eventTrigger(&eventTrigger_rAgent);
+                // eventTrigger(&eventTrigger_lAgent);
             }
         }
     } else {
@@ -708,7 +745,7 @@ static void setTxData(dwDevice_t *dev)
     txPacket.payload[rangePacketSize + LPP_HEADER] = SHORT_LPP;
     txPacket.payload[rangePacketSize + LPP_TYPE] = LPP_SHORT_AGENT_INFO;   // [Change] define a new type for tdoa4 inter-drone msg
 
-    struct lppShortAgentData_s *rData = (struct lppShortAgentData_s*) &txPacket.payload[rangePacketSize + LPP_PAYLOAD];
+    struct lppShortAgentInput_s *rData = (struct lppShortAgentInput_s*) &txPacket.payload[rangePacketSize + LPP_PAYLOAD];
     /*------ Send the info. of interest--------*/
     // For more agents and anchors, LPP packet size will be limited
     // float dummy_pos[3] = {(float)AGENT_ID+(float)0.15, (float)AGENT_ID+(float)0.25, (float)AGENT_ID+(float)0.35};
@@ -717,9 +754,10 @@ static void setTxData(dwDevice_t *dev)
     /* share current position state from EKF using UWB*/
     // consider a better data structure design
     float shared_data[4];  
-    estimatorKalmanGetSharedInfo(&shared_data[0], &shared_data[1], &shared_data[2], &shared_data[3]);
-    memcpy(rData->rAgent_data, shared_data, 4 * sizeof(float));
-    lppLength = 2 + sizeof(struct lppShortAgentData_s);
+    // [Sam] Changed get local information
+    estimatorKalmanGetSwarmInfo(&shared_data[0], &shared_data[1], &shared_data[2], &shared_data[3]);
+    memcpy(rData->agent_info, shared_data, 4 * sizeof(float));
+    lppLength = 2 + sizeof(struct lppShortAgentInput_s);
 
     dwSetData(dev, (uint8_t*)&txPacket, MAC802154_HEADER_LENGTH + rangePacketSize + lppLength);
 }
@@ -769,6 +807,17 @@ static uint32_t startNextEvent(dwDevice_t *dev, uint32_t now)
 // static void sendTdoaToEstimatorCallback(tdoaMeasurement_t* tdoaMeasurement) {
 //   estimatorKalmanEnqueueTDOA(tdoaMeasurement);
 // }
+
+// [Sam] Adding the relative localization to get the remote agent state (listener)
+bool getRemoteInfo(float* dij, float* vxj, float* vyj, float* rj, float* hj){
+  // we can obtained the information from what we have recieved and stored in ra_inputstate
+  *dij = ra_inputstate.inter_range;
+  *vxj = ra_inputstate.remote_vx;
+  *vyj = ra_inputstate.remote_vy;
+  *rj = ra_inputstate.remote_gz;
+  *hj = ra_inputstate.remote_h;
+  return true;
+}
 
 //------------------------- Init and Event ----------------------------------//
 #pragma GCC diagnostic push

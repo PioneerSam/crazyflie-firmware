@@ -279,6 +279,7 @@ static void kalmanTask(void* parameters) {
     {
       kalmanCoreFinalize(&coreData, osTick);
       // --- prepare for the inter-agent comm. data --- //
+      // This is local drone body frame velocity and yaw rates and height
       swarmVx = coreData.R[0][0] * coreData.S[KC_STATE_PX] + coreData.R[0][1] * coreData.S[KC_STATE_PY] + coreData.R[0][2] * coreData.S[KC_STATE_PZ];
       swarmVy = coreData.R[1][0] * coreData.S[KC_STATE_PX] + coreData.R[1][1] * coreData.S[KC_STATE_PY] + coreData.R[1][2] * coreData.S[KC_STATE_PZ];
       //swarmGz = atan2f(2*(q[1]*q[2]+q[0]*q[3]) , q[0]*q[0] + q[1]*q[1] - q[2]*q[2] - q[3]*q[3]);
@@ -485,13 +486,15 @@ void estimatorKalmanGetEstimatedRot(float * rotationMatrix) {
 }
 
 // [change] access current state and send through UWB (connect with lpsTdoa4Tag.c)
-// void estimatorKalmanGetSharedInfo(float* x, float* y, float* z) {
-//   *x = coreData.S[KC_STATE_X];
-//   *y = coreData.S[KC_STATE_Y];
-//   *z = coreData.S[KC_STATE_Z];
-// }
+void estimatorKalmanGetSharedInfo(float* x, float* y, float* z) {
+  *x = coreData.S[KC_STATE_X];
+  *y = coreData.S[KC_STATE_Y];
+  *z = coreData.S[KC_STATE_Z];
+}
 
-void estimatorKalmanGetSharedInfo(float* vx, float* vy, float* gyroZ, float* height) {
+
+// [Sam] Used for relative localization
+void estimatorKalmanGetSwarmInfo(float* vx, float* vy, float* gyroZ, float* height) {
   *vx = swarmVx;
   *vy = swarmVy;
   *gyroZ = swarmGz;

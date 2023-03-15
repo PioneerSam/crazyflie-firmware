@@ -27,6 +27,7 @@
 #ifndef RELATIVELOCA_H_
 #define RELATIVELOCA_H_
 #include "system.h"
+#include "math3d.h"
 
 typedef enum {
   STATE_rlX, STATE_rlY, STATE_rlYaw, STATE_DIM_rl
