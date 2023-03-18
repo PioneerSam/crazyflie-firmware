@@ -29,6 +29,10 @@
 #include "system.h"
 #include "math3d.h"
 
+// The bounds on the covariance, these shouldn't be hit, but sometimes are... why?
+#define MAX_COVARIANCE (100)
+#define MIN_COVARIANCE (1e-6f)
+
 typedef enum {
   STATE_rlX, STATE_rlY, STATE_rlYaw, STATE_DIM_rl
 } relative_stateIdx_t;

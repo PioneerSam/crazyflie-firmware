@@ -44,17 +44,23 @@
 #include "estimator_kalman.h"
 // Include our custom cummunication protocal
 #include "lpsTdoa4Tag.h"
+#include "eventtrigger.h"        // add eventtrigger logging
 
-/*To include the TDOA protocal*/
+// declare events
+EVENTTRIGGER(samqiao, float, xij, float, yij, float, rij);
 
 static bool isInit;
 
+
+// Simulation parameters
+// Pxy = 0.1 ; Pr = 0.1; Qxy = 0.1; Qr = 0.1; numRob = 2; R_k = 0.1*0.1
+
 // Define covariance constants
-static float Qv = 1.0f; // velocity deviation
-static float Qr = 0.7f; // yaw rate deviation
+static float Qv = 0.01f; // velocity deviation
+static float Qr = 0.01f; // yaw rate deviation
 static float Ruwb = 0.1f; // ranging deviation changed from 2.0f
-static float InitCovPos = 1000.0f;
-static float InitCovYaw = 1.0f;
+static float InitCovPos = 0.05f;
+static float InitCovYaw = 0.01f;
 
 #define NumAgent 2
 
@@ -151,7 +157,7 @@ void relativeLocoTask(void* arg){
         relaVar[n].P[STATE_rlY][STATE_rlY] = InitCovPos;
         relaVar[n].P[STATE_rlYaw][STATE_rlYaw] = InitCovYaw;
         // Also initialize all the states to be zero
-        relaVar[n].S[STATE_rlX] = 0;
+        relaVar[n].S[STATE_rlX] = -2.0;
         relaVar[n].S[STATE_rlY] = 0;
         relaVar[n].S[STATE_rlYaw] = 0;
         // [Sam] Connection flag set to false
@@ -185,6 +191,17 @@ void relativeLocoTask(void* arg){
                 inputVar[agent_id][STATE_rlX] = vxj;
                 inputVar[agent_id][STATE_rlY] = vyj;
                 inputVar[agent_id][STATE_rlYaw] = rj;
+
+                // Logging event for the relative localization variable
+                // eventTrigger_samqiao_payload.AGENT_ID = AGENT_ID;
+                eventTrigger_samqiao_payload.xij = relaVar[agent_id].S[0];
+                eventTrigger_samqiao_payload.yij = relaVar[agent_id].S[1];
+                eventTrigger_samqiao_payload.rij = relaVar[agent_id].S[2];
+
+                eventTrigger(&eventTrigger_samqiao);
+                // eventTrigger_rAgent_payload.rAgent_vy = remoteAgentInfo.remoteData.rAgent_data[1];
+                // eventTrigger_rAgent_payload.rAgent_yr = remoteAgentInfo.remoteData.rAgent_data[2];
+                // eventTrigger_rAgent_payload.rAgent_h  = remoteAgentInfo.remoteData.rAgent_data[3];
               }else{
                 // [Sam] In the case where I cannot get the info from the remote agent
                 relaVar[agent_id].oldTimetick = xTaskGetTickCount();
@@ -305,6 +322,21 @@ void relativeEKF(int agent_id, float vxi, float vyi, float ri, float hi, float v
   mat_mult(&tmpNN1m, &Pm, &tmpNN3m);
   // (KH - I)*P*(KH - I)' + ?
   mat_mult(&tmpNN3m, &tmpNN2m, &Pm);
+  
+  // Adding the R term
+  for (int i=0; i<STATE_DIM_rl; i++) {
+    for (int j=i; j<STATE_DIM_rl; j++) {
+      float v = K[i] * Ruwb * Ruwb * K[j];
+      float p = 0.5f* relaVar[agent_id].P[i][j] + 0.5f*relaVar[agent_id].P[j][i] + v; // add measurement noise
+      if (isnan(p) || p > MAX_COVARIANCE) {
+        relaVar[agent_id].P[i][j] = relaVar[agent_id].P[j][i] = MAX_COVARIANCE;
+      } else if ( i==j && p < MIN_COVARIANCE ) {
+        relaVar[agent_id].P[i][j] = relaVar[agent_id].P[j][i] = MIN_COVARIANCE;
+      } else {
+        relaVar[agent_id].P[i][j] = relaVar[agent_id].P[j][i] = p;
+      }
+    }
+  }
 }
 
 

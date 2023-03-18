@@ -41,14 +41,14 @@
 #define ID_INVALID 0xff
 // [Note]: can be reduce for inter-range. May be handled automatically
 #define SYSTEM_TX_FREQ 400.0  
-#define ANCHOR_MAX_TX_FREQ 50.0
+#define ANCHOR_MAX_TX_FREQ 200.0
 // We need a lower limit of minimum tx rate. The TX timestamp in the protocol is
 // only 32 bits (equal to 67 ms) and we want to avoid double wraps of the TX counter.
 // To have some margin set the lowest tx frequency to 20 Hz (= 50 ms)
 #define ANCHOR_MIN_TX_FREQ 20.0
 
 
-#define ANTENNA_OFFSET_INTER 154.3   // In meters, tune this for range calibration   (original: 154.6)
+#define ANTENNA_OFFSET_INTER 154.1   // In meters, tune this for range calibration   (original: 154.6) 154.2
 #define ANTENNA_DELAY  ((ANTENNA_OFFSET_INTER*499.2e6*128)/299792458.0) // In radio tick
 #define MIN_TOF ANTENNA_DELAY
 

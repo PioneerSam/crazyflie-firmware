@@ -34,7 +34,8 @@ EVENTTRIGGER(lAgent, float, lAgent_vx, float, lAgent_vy, float, lAgent_yr, float
 static const uint8_t base_address[] = {0,0,0,0,0,0,0xcf,0xbc};
 
 // [change]: global variable for agent id
-int AGENT_ID = 2;                
+int AGENT_ID = 10;
+
 // Agent msg context
 typedef struct {
     uint8_t id;
@@ -124,7 +125,7 @@ static struct remoteAgentInfo_s{
 }remoteAgentInfo;                
 
 //[DEBUG]: log parameter
-static float log_range;          // distance 
+// static float log_range;          // distance 
 static int   log_rAgentID;       // remote agent ID 
 
 // [Sam] Define a state to contain the remote agent states (input) for relative localization
@@ -140,8 +141,12 @@ typedef struct{
   bool refresh;
   bool keep_flying;
 }swarminfo_t;
+
 // Initialize the state
 static swarminfo_t ra_inputstate;
+
+// Sam temporary variables
+// static float_t sam_temp;
 
 /* ---------------------------- help functions ---------------------------- */
 static anchorContext_t* getContext(uint8_t anchorId) {
@@ -279,6 +284,9 @@ static void updateAnchorLists() {
 
   // Set the TX rate based on the number of transmitting anchors around us
   // Aim for 400 messages/s. Up to 8 anchors: 50 Hz / anchor
+  
+  
+
   float freq = SYSTEM_TX_FREQ / (availableCount + 1);
   if (freq > (float) ANCHOR_MAX_TX_FREQ) {  //[change]: add (float)
     freq = ANCHOR_MAX_TX_FREQ;
@@ -286,6 +294,7 @@ static void updateAnchorLists() {
   if (freq < (float) ANCHOR_MIN_TX_FREQ) { //[change]: add (float)
     freq = ANCHOR_MIN_TX_FREQ;
   }
+
   ctx.averageTxDelay = 1000.0f / freq;
 
   purgeData();
@@ -544,7 +553,7 @@ static void handleRangePacket(const uint32_t rxTime, const packet_t* rxPacket, c
                 float M_PER_TICK = 0.0046917639786157855;
                 // [LOG] log the ranging distance
 
-                // [Sam] Commented
+                // [Sam] Commented NOT USED
                 // remoteAgentInfo.ranging = (float) distance * M_PER_TICK - (float)ANTENNA_OFFSET_INTER;   // save the range in meters. 
                 // log_range = remoteAgentInfo.ranging;
 
@@ -558,27 +567,37 @@ static void handleRangePacket(const uint32_t rxTime, const packet_t* rxPacket, c
                 handleLppPacket(dataLength, rangeDataLength, rxPacket);
 
                 // // After (1) get remoteAgent ID, (2) compute the ranging, and (3) get the remoteAgent pos
-                // // interRange event
-                // eventTrigger_interRange_payload.remote_id = remoteAgentInfo.remoteAgentID;
-                // eventTrigger_interRange_payload.inter_ranging = remoteAgentInfo.ranging;
-                // // rAgent event
+
+                // interRange event
+                eventTrigger_interRange_payload.remote_id = remoteAgentInfo.remoteAgentID;
+                eventTrigger_interRange_payload.inter_ranging = remoteAgentInfo.ranging;
+                
+                // // rAgent event [Wenda]
                 // eventTrigger_rAgent_payload.rAgent_vx = remoteAgentInfo.remoteData.rAgent_data[0];
                 // eventTrigger_rAgent_payload.rAgent_vy = remoteAgentInfo.remoteData.rAgent_data[1];
                 // eventTrigger_rAgent_payload.rAgent_yr = remoteAgentInfo.remoteData.rAgent_data[2];
                 // eventTrigger_rAgent_payload.rAgent_h  = remoteAgentInfo.remoteData.rAgent_data[3];
-                // // lAgent event
-                // float local_data[4];  
-                // // call the function to get current local data
-                // // [Sam] Changed for local agent obtained from kalman filter
-                // estimatorKalmanGetSwarmInfo(&local_data[0], &local_data[1], &local_data[2], &local_data[3]);
-                // eventTrigger_lAgent_payload.lAgent_vx = local_data[0];
-                // eventTrigger_lAgent_payload.lAgent_vy = local_data[1];
-                // eventTrigger_lAgent_payload.lAgent_yr = local_data[2];
-                // eventTrigger_lAgent_payload.lAgent_h = local_data[3];
-                // // call the event logging
-                // eventTrigger(&eventTrigger_interRange);
-                // eventTrigger(&eventTrigger_rAgent);
-                // eventTrigger(&eventTrigger_lAgent);
+
+                // rAgent event [Sam]
+                eventTrigger_rAgent_payload.rAgent_vx = ra_inputstate.remote_vx;
+                eventTrigger_rAgent_payload.rAgent_vy = ra_inputstate.remote_vy;
+                eventTrigger_rAgent_payload.rAgent_yr = ra_inputstate.remote_gz;
+                eventTrigger_rAgent_payload.rAgent_h  = ra_inputstate.remote_h;
+                
+                // lAgent event
+                float local_data[4];  
+                // call the function to get current local data
+                // [Sam] Changed for local agent obtained from kalman filter
+                estimatorKalmanGetSwarmInfo(&local_data[0], &local_data[1], &local_data[2], &local_data[3]);
+                eventTrigger_lAgent_payload.lAgent_vx = local_data[0];
+                eventTrigger_lAgent_payload.lAgent_vy = local_data[1];
+                eventTrigger_lAgent_payload.lAgent_yr = local_data[2];
+                eventTrigger_lAgent_payload.lAgent_h = local_data[3];
+
+                // call the event logging on those three events: Interrange + remote agent event + local agent event
+                eventTrigger(&eventTrigger_interRange);
+                eventTrigger(&eventTrigger_rAgent);
+                eventTrigger(&eventTrigger_lAgent);
             }
         }
     } else {
@@ -756,6 +775,13 @@ static void setTxData(dwDevice_t *dev)
     float shared_data[4];  
     // [Sam] Changed get local information
     estimatorKalmanGetSwarmInfo(&shared_data[0], &shared_data[1], &shared_data[2], &shared_data[3]);
+    // send the local input to the other agents
+    // // for testing
+    // shared_data[0] = AGENT_ID + 0.1;
+    // shared_data[1] = AGENT_ID + 0.2;
+    // shared_data[2] = AGENT_ID + 0.3;
+    // shared_data[3] = AGENT_ID + 0.4;
+
     memcpy(rData->agent_info, shared_data, 4 * sizeof(float));
     lppLength = 2 + sizeof(struct lppShortAgentInput_s);
 
@@ -963,9 +989,18 @@ uwbAlgorithm_t uwbTdoa4TagAlgorithm = { // [change]: the name changed
 
 // Add inter-drone range logging
 LOG_GROUP_START(tdoa4)
-LOG_ADD(LOG_FLOAT, inter_range,  &log_range)
+LOG_ADD(LOG_FLOAT, inter_range,  &ra_inputstate.inter_range)
 LOG_ADD(LOG_INT16, rAgentID,     &log_rAgentID)
+// LOG_ADD(LOG_FLOAT, delay, &sam_temp)
+// // Sam
+// LOG_ADD(LOG_FLOAT, v_xj, &ra_inputstate.remote_vx)
+// LOG_ADD(LOG_FLOAT, v_yj, &ra_inputstate.remote_vy)
+// LOG_ADD(LOG_FLOAT, rj, &ra_inputstate.remote_gz)
+// LOG_ADD(LOG_FLOAT, h_j, &ra_inputstate.remote_h)
+
 LOG_GROUP_STOP(tdoa4)
+
+// Logged communication
 
 
 

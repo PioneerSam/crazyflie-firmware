@@ -319,8 +319,8 @@ ifeq ($(DEBUG), 1)
 else
   CFLAGS += -Os
 
-  # Fail on warnings
-#   CFLAGS += -Werror
+#   Fail on warnings
+  CFLAGS += -Werror
 endif
 
 # Disable warnings for unaligned addresses in packed structs (added in GCC 9)
