@@ -34,7 +34,7 @@ EVENTTRIGGER(lAgent, float, lAgent_vx, float, lAgent_vy, float, lAgent_yr, float
 static const uint8_t base_address[] = {0,0,0,0,0,0,0xcf,0xbc};
 
 // [change]: global variable for agent id
-int AGENT_ID = 10;
+int AGENT_ID = 11;
 
 // Agent msg context
 typedef struct {
@@ -115,14 +115,14 @@ struct lppShortAgentInput_s {
     float agent_info[4];         // vx, vy, gz, h
 } __attribute__((packed));
 
-// Data struct for remote agent info 
-static struct remoteAgentInfo_s{
-    uint8_t remoteAgentID;           // source Agent (where the msg is sent from)
-    int destAgentID;             // destination Agent (where the msg is sent to)
-    bool hasDistance;
-    struct lppShortAgentInput_s remoteData;
-    float ranging;
-}remoteAgentInfo;                
+// // Data struct for remote agent info 
+// static struct remoteAgentInfo_s{
+//     uint8_t remoteAgentID;           // source Agent (where the msg is sent from)
+//     int destAgentID;             // destination Agent (where the msg is sent to)
+//     bool hasDistance;
+//     struct lppShortAgentInput_s remoteData;
+//     float ranging;
+// }remoteAgentInfo;                
 
 //[DEBUG]: log parameter
 // static float log_range;          // distance 
@@ -435,6 +435,7 @@ static void handleLppShortPacket(const uint8_t *data, const int length) {
         // remoteAgentInfo.remoteData.rAgent_data[1] = rData->rAgent_data[1];     
         // remoteAgentInfo.remoteData.rAgent_data[2] = rData->rAgent_data[2];     
         // remoteAgentInfo.remoteData.rAgent_data[3] = rData->rAgent_data[3]; 
+
         // [Sam] Saved the recieved package
         ra_inputstate.remote_vx = rData->agent_info[0];
         ra_inputstate.remote_vy = rData->agent_info[1];
@@ -525,7 +526,7 @@ static void handleRangePacket(const uint32_t rxTime, const packet_t* rxPacket, c
   const uint8_t remote_id = rxPacket->sourceAddress;             // remote Agent ID, where the packet was sent from.
   log_rAgentID = remote_id;                                      // [LOG] log the remote Agent ID 
 
-  remoteAgentInfo.remoteAgentID = remote_id;                     // save to remoteAgent data structure
+  // remoteAgentInfo.remoteAgentID = remote_id;                     // save to remoteAgent data structure
   ra_inputstate.remoteAgentID = remote_id;
 
   ctx.anchorRxCount[remote_id]++;
@@ -569,8 +570,8 @@ static void handleRangePacket(const uint32_t rxTime, const packet_t* rxPacket, c
                 // // After (1) get remoteAgent ID, (2) compute the ranging, and (3) get the remoteAgent pos
 
                 // interRange event
-                eventTrigger_interRange_payload.remote_id = remoteAgentInfo.remoteAgentID;
-                eventTrigger_interRange_payload.inter_ranging = remoteAgentInfo.ranging;
+                eventTrigger_interRange_payload.remote_id = ra_inputstate.remoteAgentID;
+                eventTrigger_interRange_payload.inter_ranging = ra_inputstate.inter_range;
                 
                 // // rAgent event [Wenda]
                 // eventTrigger_rAgent_payload.rAgent_vx = remoteAgentInfo.remoteData.rAgent_data[0];
@@ -776,6 +777,7 @@ static void setTxData(dwDevice_t *dev)
     // [Sam] Changed get local information
     estimatorKalmanGetSwarmInfo(&shared_data[0], &shared_data[1], &shared_data[2], &shared_data[3]);
     // send the local input to the other agents
+    
     // // for testing
     // shared_data[0] = AGENT_ID + 0.1;
     // shared_data[1] = AGENT_ID + 0.2;

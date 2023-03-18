@@ -55,12 +55,20 @@ static bool isInit;
 // Simulation parameters
 // Pxy = 0.1 ; Pr = 0.1; Qxy = 0.1; Qr = 0.1; numRob = 2; R_k = 0.1*0.1
 
-// Define covariance constants
-static float Qv = 0.01f; // velocity deviation
-static float Qr = 0.01f; // yaw rate deviation
-static float Ruwb = 0.1f; // ranging deviation changed from 2.0f
-static float InitCovPos = 0.05f;
-static float InitCovYaw = 0.01f;
+// // Define our covariance constants (to be tuned)
+// static float Qv = 0.01f; // velocity deviation
+// static float Qr = 0.01f; // yaw rate deviation
+// static float Ruwb = 0.1f; // ranging deviation changed from 2.0f
+// static float InitCovPos = 0.05f;
+// static float InitCovYaw = 0.01f;
+
+// Shuai's parameters
+static float Qv = 1.0f; // velocity deviation
+static float Qr = 0.7f; // yaw rate deviation
+static float Ruwb = 2.0f; // ranging deviation
+static float InitCovPos = 1000.0f;
+static float InitCovYaw = 1.0f;
+
 
 #define NumAgent 2
 
@@ -68,7 +76,7 @@ static float InitCovYaw = 0.01f;
 static relaVariable_t relaVar[NumAgent];
 
 // The system input variable 
-// [Sam] Maybe STATE_DIM_rl = 3 due to enum
+// [Sam] STATE_DIM_rl = 3 due to enum
 static float_t inputVar[NumAgent][STATE_DIM_rl];
 
 // Linerization Matrix
@@ -144,7 +152,7 @@ void relativeLocoInit(void)
 // Define the relative localization task
 void relativeLocoTask(void* arg){
     systemWaitStart();
-    // [Sam] zero all the covariance matrix: 
+    // [Sam] zero out all the covariance matrix: 
     for(int n=0;n<NumAgent;n++){
         for(int i=0;i<STATE_DIM_rl;i++){
             for(int j=0;j<STATE_DIM_rl;j++){
@@ -162,7 +170,7 @@ void relativeLocoTask(void* arg){
         relaVar[n].S[STATE_rlYaw] = 0;
         // [Sam] Connection flag set to false
         relaVar[n].receiveFlag = false;
-    }
+    } // end of the outter for loop
 
     // The main while loop that executes the EKF
     while(1){
@@ -199,9 +207,7 @@ void relativeLocoTask(void* arg){
                 eventTrigger_samqiao_payload.rij = relaVar[agent_id].S[2];
 
                 eventTrigger(&eventTrigger_samqiao);
-                // eventTrigger_rAgent_payload.rAgent_vy = remoteAgentInfo.remoteData.rAgent_data[1];
-                // eventTrigger_rAgent_payload.rAgent_yr = remoteAgentInfo.remoteData.rAgent_data[2];
-                // eventTrigger_rAgent_payload.rAgent_h  = remoteAgentInfo.remoteData.rAgent_data[3];
+              
               }else{
                 // [Sam] In the case where I cannot get the info from the remote agent
                 relaVar[agent_id].oldTimetick = xTaskGetTickCount();
@@ -240,7 +246,7 @@ void relativeEKF(int agent_id, float vxi, float vyi, float ri, float hi, float v
   relaVar[agent_id].S[STATE_rlYaw] = phi_ij + (rj - ri)*dt;
 
   // [Sam] The linearized matrix A
-  A[0][0] = 0;
+  A[0][0] = 1;
   A[0][1] = ri*dt;
   A[0][2] = (-syaw*vxj - cyaw*vyj)*dt;
   A[1][0] = -ri*dt;
