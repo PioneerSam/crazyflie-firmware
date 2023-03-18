@@ -20,7 +20,7 @@
 #include "eventtrigger.h"        // add eventtrigger logging
 
 // declare events
-EVENTTRIGGER(interRange, uint8, remote_id, float, inter_ranging) 
+EVENTTRIGGER(interRange, float, inter_ranging) 
 EVENTTRIGGER(rAgent, float, rAgent_vx, float, rAgent_vy, float, rAgent_yr, float, rAgent_h)      // remote agent
 EVENTTRIGGER(lAgent, float, lAgent_vx, float, lAgent_vy, float, lAgent_yr, float, lAgent_h)      // local  agent
 
@@ -570,7 +570,7 @@ static void handleRangePacket(const uint32_t rxTime, const packet_t* rxPacket, c
                 // // After (1) get remoteAgent ID, (2) compute the ranging, and (3) get the remoteAgent pos
 
                 // interRange event
-                eventTrigger_interRange_payload.remote_id = ra_inputstate.remoteAgentID;
+                // eventTrigger_interRange_payload.remote_id = ra_inputstate.remoteAgentID;
                 eventTrigger_interRange_payload.inter_ranging = ra_inputstate.inter_range;
                 
                 // // rAgent event [Wenda]

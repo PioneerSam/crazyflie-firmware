@@ -55,19 +55,19 @@ static bool isInit;
 // Simulation parameters
 // Pxy = 0.1 ; Pr = 0.1; Qxy = 0.1; Qr = 0.1; numRob = 2; R_k = 0.1*0.1
 
-// // Define our covariance constants (to be tuned)
-// static float Qv = 0.01f; // velocity deviation
-// static float Qr = 0.01f; // yaw rate deviation
-// static float Ruwb = 0.1f; // ranging deviation changed from 2.0f
-// static float InitCovPos = 0.05f;
-// static float InitCovYaw = 0.01f;
+// Define our covariance constants (to be tuned)
+static float Qv = 0.01f; // velocity deviation
+static float Qr = 0.01f; // yaw rate deviation
+static float Ruwb = 0.1f; // ranging deviation changed from 2.0f
+static float InitCovPos = 0.05f;
+static float InitCovYaw = 0.01f;
 
-// Shuai's parameters
-static float Qv = 1.0f; // velocity deviation
-static float Qr = 0.7f; // yaw rate deviation
-static float Ruwb = 2.0f; // ranging deviation
-static float InitCovPos = 1000.0f;
-static float InitCovYaw = 1.0f;
+// // Shuai's parameters
+// static float Qv = 1.0f; // velocity deviation
+// static float Qr = 0.7f; // yaw rate deviation
+// static float Ruwb = 2.0f; // ranging deviation
+// static float InitCovPos = 1000.0f;
+// static float InitCovYaw = 1.0f;
 
 
 #define NumAgent 2
@@ -165,9 +165,23 @@ void relativeLocoTask(void* arg){
         relaVar[n].P[STATE_rlY][STATE_rlY] = InitCovPos;
         relaVar[n].P[STATE_rlYaw][STATE_rlYaw] = InitCovYaw;
         // Also initialize all the states to be zero
-        relaVar[n].S[STATE_rlX] = -2.0;
-        relaVar[n].S[STATE_rlY] = 0;
-        relaVar[n].S[STATE_rlYaw] = 0;
+        
+        // [Sam] Temporary Logic
+        if(n == 0){
+            relaVar[n].S[STATE_rlX] = 0.0;
+        }else{ //n = 1
+          if(AGENT_ID == 10){
+              relaVar[n].S[STATE_rlX] = -2.0;
+          }else if(AGENT_ID == 11){
+              relaVar[n].S[STATE_rlX] = 2.0;
+          }else{
+            relaVar[n].S[STATE_rlX] = 0.0;
+          }
+        }
+        
+        relaVar[n].S[STATE_rlY] = 0.0;
+        relaVar[n].S[STATE_rlYaw] = 0.0;
+
         // [Sam] Connection flag set to false
         relaVar[n].receiveFlag = false;
     } // end of the outter for loop
@@ -176,7 +190,7 @@ void relativeLocoTask(void* arg){
     while(1){
         //first delay a little bit
         vTaskDelay(10);
-        for(int agent_id=0;agent_id<NumAgent;agent_id++){
+        for(int agent_id=1;agent_id<NumAgent;agent_id++){
             // We need to get remote agent body frame velocity and yaw rates 
             // Interrange can be obtained as well
             if(getRemoteInfo(&dij,&vxj,&vyj,&rj,&hj)){
@@ -202,12 +216,13 @@ void relativeLocoTask(void* arg){
 
                 // Logging event for the relative localization variable
                 // eventTrigger_samqiao_payload.AGENT_ID = AGENT_ID;
-                eventTrigger_samqiao_payload.xij = relaVar[agent_id].S[0];
-                eventTrigger_samqiao_payload.yij = relaVar[agent_id].S[1];
-                eventTrigger_samqiao_payload.rij = relaVar[agent_id].S[2];
+                if(agent_id == NumAgent-1){
+                  eventTrigger_samqiao_payload.xij = relaVar[agent_id].S[STATE_rlX];
+                  eventTrigger_samqiao_payload.yij = relaVar[agent_id].S[STATE_rlY];
+                  eventTrigger_samqiao_payload.rij = relaVar[agent_id].S[STATE_rlYaw];
 
-                eventTrigger(&eventTrigger_samqiao);
-              
+                  eventTrigger(&eventTrigger_samqiao);
+                }
               }else{
                 // [Sam] In the case where I cannot get the info from the remote agent
                 relaVar[agent_id].oldTimetick = xTaskGetTickCount();
