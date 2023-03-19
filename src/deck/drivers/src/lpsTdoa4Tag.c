@@ -21,8 +21,8 @@
 
 // declare events
 EVENTTRIGGER(interRange, float, inter_ranging) 
-EVENTTRIGGER(rAgent, float, rAgent_vx, float, rAgent_vy, float, rAgent_yr, float, rAgent_h)      // remote agent
-EVENTTRIGGER(lAgent, float, lAgent_vx, float, lAgent_vy, float, lAgent_yr, float, lAgent_h)      // local  agent
+// EVENTTRIGGER(rAgent, float, rAgent_vx, float, rAgent_vy, float, rAgent_yr, float, rAgent_h)      // remote agent
+// EVENTTRIGGER(lAgent, float, lAgent_vx, float, lAgent_vy, float, lAgent_yr, float, lAgent_h)      // local  agent
 
 #define TDOA4_RECEIVE_TIMEOUT 10000
 // Packet formats
@@ -34,7 +34,7 @@ EVENTTRIGGER(lAgent, float, lAgent_vx, float, lAgent_vy, float, lAgent_yr, float
 static const uint8_t base_address[] = {0,0,0,0,0,0,0xcf,0xbc};
 
 // [change]: global variable for agent id
-int AGENT_ID = 10;
+int AGENT_ID = 11;
 
 // Agent msg context
 typedef struct {
@@ -580,25 +580,25 @@ static void handleRangePacket(const uint32_t rxTime, const packet_t* rxPacket, c
                 // eventTrigger_rAgent_payload.rAgent_h  = remoteAgentInfo.remoteData.rAgent_data[3];
 
                 // rAgent event [Sam]
-                eventTrigger_rAgent_payload.rAgent_vx = ra_inputstate.remote_vx;
-                eventTrigger_rAgent_payload.rAgent_vy = ra_inputstate.remote_vy;
-                eventTrigger_rAgent_payload.rAgent_yr = ra_inputstate.remote_gz;
-                eventTrigger_rAgent_payload.rAgent_h  = ra_inputstate.remote_h;
+                // eventTrigger_rAgent_payload.rAgent_vx = ra_inputstate.remote_vx;
+                // eventTrigger_rAgent_payload.rAgent_vy = ra_inputstate.remote_vy;
+                // eventTrigger_rAgent_payload.rAgent_yr = ra_inputstate.remote_gz;
+                // eventTrigger_rAgent_payload.rAgent_h  = ra_inputstate.remote_h;
                 
                 // lAgent event
-                float local_data[4];  
+                // float local_data[4];  
                 // call the function to get current local data
                 // [Sam] Changed for local agent obtained from kalman filter
-                estimatorKalmanGetSwarmInfo(&local_data[0], &local_data[1], &local_data[2], &local_data[3]);
-                eventTrigger_lAgent_payload.lAgent_vx = local_data[0];
-                eventTrigger_lAgent_payload.lAgent_vy = local_data[1];
-                eventTrigger_lAgent_payload.lAgent_yr = local_data[2];
-                eventTrigger_lAgent_payload.lAgent_h = local_data[3];
+                // estimatorKalmanGetSwarmInfo(&local_data[0], &local_data[1], &local_data[2], &local_data[3]);
+                // eventTrigger_lAgent_payload.lAgent_vx = local_data[0];
+                // eventTrigger_lAgent_payload.lAgent_vy = local_data[1];
+                // eventTrigger_lAgent_payload.lAgent_yr = local_data[2];
+                // eventTrigger_lAgent_payload.lAgent_h = local_data[3];
 
                 // call the event logging on those three events: Interrange + remote agent event + local agent event
                 eventTrigger(&eventTrigger_interRange);
-                eventTrigger(&eventTrigger_rAgent);
-                eventTrigger(&eventTrigger_lAgent);
+                // eventTrigger(&eventTrigger_rAgent);
+                // eventTrigger(&eventTrigger_lAgent);
             }
         }
     } else {

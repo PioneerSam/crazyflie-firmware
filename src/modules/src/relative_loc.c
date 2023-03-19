@@ -48,7 +48,8 @@
 
 // declare events
 EVENTTRIGGER(samqiao, float, xij, float, yij, float, rij);
-
+EVENTTRIGGER(rAgent, float, rAgent_vx, float, rAgent_vy, float, rAgent_yr, float, rAgent_h)      // remote agent
+EVENTTRIGGER(lAgent, float, lAgent_vx, float, lAgent_vy, float, lAgent_yr, float, lAgent_h)      // local  agent
 static bool isInit;
 
 
@@ -207,6 +208,18 @@ void relativeLocoTask(void* arg){
                 // Update current time
                 relaVar[agent_id].oldTimetick = osTick;
                 
+                // [Sam] SD log input remote agent
+                eventTrigger_rAgent_payload.rAgent_vx = vxj;
+                eventTrigger_rAgent_payload.rAgent_vy = vyj;
+                eventTrigger_rAgent_payload.rAgent_yr = rj;
+                eventTrigger_rAgent_payload.rAgent_h  = hj;
+                
+                // [Sam] SD log input local agent
+                eventTrigger_lAgent_payload.lAgent_vx = vxi;
+                eventTrigger_lAgent_payload.lAgent_vy = vyi;
+                eventTrigger_lAgent_payload.lAgent_yr = ri;
+                eventTrigger_lAgent_payload.lAgent_h = hi;
+
                 // Execute the relative localization EKF
                 relativeEKF(agent_id, vxi, vyi, ri, hi, vxj, vyj, rj, hj, dij, dtEKF);
                 
@@ -223,6 +236,8 @@ void relativeLocoTask(void* arg){
                   eventTrigger_samqiao_payload.rij = relaVar[agent_id].S[STATE_rlYaw];
 
                   eventTrigger(&eventTrigger_samqiao);
+                  eventTrigger(&eventTrigger_rAgent);
+                  eventTrigger(&eventTrigger_lAgent);
                 }
               }else{
                 // [Sam] In the case where I cannot get the info from the remote agent
