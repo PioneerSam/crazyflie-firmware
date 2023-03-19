@@ -34,7 +34,7 @@ EVENTTRIGGER(lAgent, float, lAgent_vx, float, lAgent_vy, float, lAgent_yr, float
 static const uint8_t base_address[] = {0,0,0,0,0,0,0xcf,0xbc};
 
 // [change]: global variable for agent id
-int AGENT_ID = 10;
+int AGENT_ID = 11;
 
 // Agent msg context
 typedef struct {

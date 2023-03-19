@@ -58,7 +58,7 @@ static bool isInit;
 // Define our covariance constants (to be tuned)
 static float Qv = 0.01f; // velocity deviation
 static float Qr = 0.01f; // yaw rate deviation
-static float Ruwb = 0.1f; // ranging deviation changed from 2.0f
+static float Ruwb = 0.15f; // ranging deviation changed from 2.0f
 static float InitCovPos = 0.05f;
 static float InitCovYaw = 0.01f;
 
@@ -245,29 +245,24 @@ void relativeLocoTask(void* arg){
 void relativeEKF(int agent_id, float vxi, float vyi, float ri, float hi, float vxj, float vyj, float rj, float hj, uint16_t dij, float dt){
   // local agent input and remote agent input
   // create the covariance matrix
-  arm_matrix_instance_f32 Pm = {STATE_DIM_rl, STATE_DIM_rl, (float *) relaVar[agent_id].P};
-
-    // agent j's pos in i's frame
+  arm_matrix_instance_f32 Pm = {STATE_DIM_rl, STATE_DIM_rl, (float *)relaVar[agent_id].P};
+  float cyaw = arm_cos_f32(relaVar[agent_id].S[STATE_rlYaw]);
+  float syaw = arm_sin_f32(relaVar[agent_id].S[STATE_rlYaw]);
   float xij = relaVar[agent_id].S[STATE_rlX];
   float yij = relaVar[agent_id].S[STATE_rlY];
-  float phi_ij = relaVar[agent_id].S[STATE_rlYaw];
-
-  // the cosine and the sine of the current yaw
-  float cyaw = arm_cos_f32(phi_ij);
-  float syaw = arm_sin_f32(phi_ij);
 
   // predication for the next timestamp
   relaVar[agent_id].S[STATE_rlX] = xij + (cyaw*vxj - syaw*vyj - vxi + ri*yij)*dt;
   relaVar[agent_id].S[STATE_rlY] = yij + (syaw*vxj + cyaw*vyj - vyi - ri*xij)*dt;
-  relaVar[agent_id].S[STATE_rlYaw] = phi_ij + (rj - ri)*dt;
+  relaVar[agent_id].S[STATE_rlYaw] = relaVar[agent_id].S[STATE_rlYaw] + (rj-ri)*dt;
 
   // [Sam] The linearized matrix A
   A[0][0] = 1;
   A[0][1] = ri*dt;
-  A[0][2] = (-syaw*vxj - cyaw*vyj)*dt;
+  A[0][2] = (-syaw*vxj-cyaw*vyj)*dt;
   A[1][0] = -ri*dt;
   A[1][1] = 1;
-  A[1][2] = (cyaw*vxj - syaw*vyj)*dt;
+  A[1][2] = (cyaw*vxj-syaw*vyj)*dt;
   A[2][0] = 0;
   A[2][1] = 0;
   A[2][2] = 1;
@@ -284,17 +279,17 @@ void relativeEKF(int agent_id, float vxi, float vyi, float ri, float hi, float v
   //        [                       -Qr*x*y, Qv*c^2 + Qv*s^2 + Qr*x^2 + Qv,  Qr*x]
   //        [                         -Qr*y,                          Qr*x,  2*Qr]*dt^2
 
-  float dt_squared =  dt*dt;
+  float dt2 = dt*dt;
+  relaVar[agent_id].P[0][0] += dt2*(Qv+Qv+Qr*yij*yij);
+  relaVar[agent_id].P[0][1] += dt2*(-Qr*xij*yij);
+  relaVar[agent_id].P[0][2] += dt2*(-Qr*yij);
+  relaVar[agent_id].P[1][0] += dt2*(-Qr*xij*yij);
+  relaVar[agent_id].P[1][1] += dt2*(Qv+Qv+Qr*xij*xij);
+  relaVar[agent_id].P[1][2] += dt2*(Qr*xij);
+  relaVar[agent_id].P[2][0] += dt2*(-Qr*yij);
+  relaVar[agent_id].P[2][1] += dt2*(Qr*xij);
+  relaVar[agent_id].P[2][2] += dt2*(2*Qr);
 
-  relaVar[agent_id].P[0][0] += (2*Qv + yij*yij*Qr)*dt_squared;
-  relaVar[agent_id].P[0][1] += (-xij*yij*Qr)*dt_squared;
-  relaVar[agent_id].P[0][2] += (-yij*Qr)*dt_squared;
-  relaVar[agent_id].P[1][0] += (-xij*yij*Qr)*dt_squared;
-  relaVar[agent_id].P[1][1] += (2*Qv + xij*xij*Qr)*dt_squared;
-  relaVar[agent_id].P[1][2] += (xij*Qr)*dt_squared;
-  relaVar[agent_id].P[2][0] += (-yij*Qr)*dt_squared;
-  relaVar[agent_id].P[2][1] += (xij*Qr)*dt_squared;
-  relaVar[agent_id].P[2][2] += (2*Qr)*dt_squared;
 
   // Update the state variables prior estimate
   xij = relaVar[agent_id].S[STATE_rlX];
@@ -345,20 +340,20 @@ void relativeEKF(int agent_id, float vxi, float vyi, float ri, float hi, float v
   // (KH - I)*P*(KH - I)' + ?
   mat_mult(&tmpNN3m, &tmpNN2m, &Pm);
   
-  // Adding the R term
-  for (int i=0; i<STATE_DIM_rl; i++) {
-    for (int j=i; j<STATE_DIM_rl; j++) {
-      float v = K[i] * Ruwb * Ruwb * K[j];
-      float p = 0.5f* relaVar[agent_id].P[i][j] + 0.5f*relaVar[agent_id].P[j][i] + v; // add measurement noise
-      if (isnan(p) || p > MAX_COVARIANCE) {
-        relaVar[agent_id].P[i][j] = relaVar[agent_id].P[j][i] = MAX_COVARIANCE;
-      } else if ( i==j && p < MIN_COVARIANCE ) {
-        relaVar[agent_id].P[i][j] = relaVar[agent_id].P[j][i] = MIN_COVARIANCE;
-      } else {
-        relaVar[agent_id].P[i][j] = relaVar[agent_id].P[j][i] = p;
-      }
-    }
-  }
+  // // Adding the R term
+  // for (int i=0; i<STATE_DIM_rl; i++) {
+  //   for (int j=i; j<STATE_DIM_rl; j++) {
+  //     float v = K[i] * Ruwb * Ruwb * K[j];
+  //     float p = 0.5f* relaVar[agent_id].P[i][j] + 0.5f*relaVar[agent_id].P[j][i] + v; // add measurement noise
+  //     if (isnan(p) || p > MAX_COVARIANCE) {
+  //       relaVar[agent_id].P[i][j] = relaVar[agent_id].P[j][i] = MAX_COVARIANCE;
+  //     } else if ( i==j && p < MIN_COVARIANCE ) {
+  //       relaVar[agent_id].P[i][j] = relaVar[agent_id].P[j][i] = MIN_COVARIANCE;
+  //     } else {
+  //       relaVar[agent_id].P[i][j] = relaVar[agent_id].P[j][i] = p;
+  //     }
+  //   }
+  // }
 }
 
 
