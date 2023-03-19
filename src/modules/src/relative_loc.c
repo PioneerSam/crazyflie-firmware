@@ -50,6 +50,7 @@
 EVENTTRIGGER(samqiao, float, xij, float, yij, float, rij);
 EVENTTRIGGER(rAgent, float, rAgent_vx, float, rAgent_vy, float, rAgent_yr, float, rAgent_h)      // remote agent
 EVENTTRIGGER(lAgent, float, lAgent_vx, float, lAgent_vy, float, lAgent_yr, float, lAgent_h)      // local  agent
+EVENTTRIGGER(interRange, float, inter_ranging) // interrange
 static bool isInit;
 
 
@@ -209,6 +210,9 @@ void relativeLocoTask(void* arg){
                 relaVar[agent_id].oldTimetick = osTick;
                 
                 // [Sam] SD log input remote agent
+                eventTrigger_interRange_payload.inter_ranging = dij;
+
+                // [Sam] SD log input remote agent
                 eventTrigger_rAgent_payload.rAgent_vx = vxj;
                 eventTrigger_rAgent_payload.rAgent_vy = vyj;
                 eventTrigger_rAgent_payload.rAgent_yr = rj;
@@ -238,6 +242,7 @@ void relativeLocoTask(void* arg){
                   eventTrigger(&eventTrigger_samqiao);
                   eventTrigger(&eventTrigger_rAgent);
                   eventTrigger(&eventTrigger_lAgent);
+                  eventTrigger(&eventTrigger_interRange);
                 }
               }else{
                 // [Sam] In the case where I cannot get the info from the remote agent
@@ -257,7 +262,7 @@ void relativeLocoTask(void* arg){
     }
 }
 
-void relativeEKF(int agent_id, float vxi, float vyi, float ri, float hi, float vxj, float vyj, float rj, float hj, uint16_t dij, float dt){
+void relativeEKF(int agent_id, float vxi, float vyi, float ri, float hi, float vxj, float vyj, float rj, float hj, float dij, float dt){
   // local agent input and remote agent input
   // create the covariance matrix
   arm_matrix_instance_f32 Pm = {STATE_DIM_rl, STATE_DIM_rl, (float *) relaVar[agent_id].P};
