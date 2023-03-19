@@ -140,7 +140,7 @@ static inline void mat_mult(const arm_matrix_instance_f32 * pSrcA, const arm_mat
 static inline float arm_sqrt(float32_t in)
 { float pOut = 0; arm_status result = arm_sqrt_f32(in, &pOut); configASSERT(ARM_MATH_SUCCESS == result); return pOut; }
 
-// Initializa the task if not initialized
+// Initialize the task if not initialized
 void relativeLocoInit(void)
 {
   if (isInit)
@@ -209,7 +209,8 @@ void relativeLocoTask(void* arg){
                 
                 // Execute the relative localization EKF
                 relativeEKF(agent_id, vxi, vyi, ri, hi, vxj, vyj, rj, hj, dij, dtEKF);
-
+                
+                // Maybe it should be i?
                 inputVar[agent_id][STATE_rlX] = vxj;
                 inputVar[agent_id][STATE_rlY] = vyj;
                 inputVar[agent_id][STATE_rlYaw] = rj;
@@ -228,9 +229,9 @@ void relativeLocoTask(void* arg){
                 relaVar[agent_id].oldTimetick = xTaskGetTickCount();
                 relaVar[agent_id].receiveFlag = true;
                 fullConnect = true;
-                }
               }
             }
+          }
 
         // Increment the counter
         connectCount++;
@@ -266,7 +267,7 @@ void relativeEKF(int agent_id, float vxi, float vyi, float ri, float hi, float v
   A[0][2] = (-syaw*vxj - cyaw*vyj)*dt;
   A[1][0] = -ri*dt;
   A[1][1] = 1;
-  A[1][2] = (cyaw*vxj - syaw*vyi)*dt;
+  A[1][2] = (cyaw*vxj - syaw*vyj)*dt;
   A[2][0] = 0;
   A[2][1] = 0;
   A[2][2] = 1;
