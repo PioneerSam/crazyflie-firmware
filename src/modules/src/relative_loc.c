@@ -192,67 +192,67 @@ void relativeLocoTask(void* arg){
     while(1){
         //first delay a little bit
         vTaskDelay(10);
-        for(int agent_id=1;agent_id<NumAgent;agent_id++){
-            // We need to get remote agent body frame velocity and yaw rates 
-            // Interrange can be obtained as well
-            if(getRemoteInfo(&dij,&vxj,&vyj,&rj,&hj)){
-              connectCount = 0;
-              // We also need to get local agent body frame velocity
-              estimatorKalmanGetSwarmInfo(&vxi, &vyi, &ri, &hi);
-              // Check the receive flag of this agent
-              if(relaVar[agent_id].receiveFlag){
+        int agent_id = 1;
+        // for(int agent_id=1;agent_id<NumAgent;agent_id++){
+        // We need to get remote agent body frame velocity and yaw rates 
+        // Interrange can be obtained as well
+        if(getRemoteInfo(&dij,&vxj,&vyj,&rj,&hj)){
+          connectCount = 0;
+          // We also need to get local agent body frame velocity
+          estimatorKalmanGetSwarmInfo(&vxi, &vyi, &ri, &hi);
+          // Check the receive flag of this agent
+          if(relaVar[agent_id].receiveFlag){
+        
+            uint32_t osTick = xTaskGetTickCount();
+            // Calculate dt in the EKF (timestep) 
+            // Time elpased / how many ticks per sec
+            float dtEKF = (float) (osTick - relaVar[agent_id].oldTimetick)/configTICK_RATE_HZ;
+            // Update current time
+            relaVar[agent_id].oldTimetick = osTick;
             
-                uint32_t osTick = xTaskGetTickCount();
-                // Calculate dt in the EKF (timestep) 
-                // Time elpased / how many ticks per sec
-                float dtEKF = (float) (osTick - relaVar[agent_id].oldTimetick)/configTICK_RATE_HZ;
-                // Update current time
-                relaVar[agent_id].oldTimetick = osTick;
-                
-                // [Sam] SD log input remote agent
-                eventTrigger_interRange_payload.inter_ranging = dij;
+            // [Sam] SD log input remote agent
+            eventTrigger_interRange_payload.inter_ranging = dij;
 
-                // [Sam] SD log input remote agent
-                eventTrigger_rAgent_payload.rAgent_vx = vxj;
-                eventTrigger_rAgent_payload.rAgent_vy = vyj;
-                eventTrigger_rAgent_payload.rAgent_yr = rj;
-                eventTrigger_rAgent_payload.rAgent_h  = hj;
-                
-                // [Sam] SD log input local agent
-                eventTrigger_lAgent_payload.lAgent_vx = vxi;
-                eventTrigger_lAgent_payload.lAgent_vy = vyi;
-                eventTrigger_lAgent_payload.lAgent_yr = ri;
-                eventTrigger_lAgent_payload.lAgent_h = hi;
+            // [Sam] SD log input remote agent
+            eventTrigger_rAgent_payload.rAgent_vx = vxj;
+            eventTrigger_rAgent_payload.rAgent_vy = vyj;
+            eventTrigger_rAgent_payload.rAgent_yr = rj;
+            eventTrigger_rAgent_payload.rAgent_h  = hj;
+            
+            // [Sam] SD log input local agent
+            eventTrigger_lAgent_payload.lAgent_vx = vxi;
+            eventTrigger_lAgent_payload.lAgent_vy = vyi;
+            eventTrigger_lAgent_payload.lAgent_yr = ri;
+            eventTrigger_lAgent_payload.lAgent_h = hi;
 
-                // Execute the relative localization EKF
-                relativeEKF(agent_id, vxi, vyi, ri, hi, vxj, vyj, rj, hj, dij, dtEKF);
-                
-                // Maybe it should be i?
-                inputVar[agent_id][STATE_rlX] = vxj;
-                inputVar[agent_id][STATE_rlY] = vyj;
-                inputVar[agent_id][STATE_rlYaw] = rj;
+            // Execute the relative localization EKF
+            relativeEKF(agent_id, vxi, vyi, ri, hi, vxj, vyj, rj, hj, dij, dtEKF);
+            
+            // Maybe it should be i?
+            inputVar[agent_id][STATE_rlX] = vxj;
+            inputVar[agent_id][STATE_rlY] = vyj;
+            inputVar[agent_id][STATE_rlYaw] = rj;
 
-                // Logging event for the relative localization variable
-                // eventTrigger_samqiao_payload.AGENT_ID = AGENT_ID;
-                if(agent_id == NumAgent-1){
-                  eventTrigger_samqiao_payload.xij = relaVar[agent_id].S[STATE_rlX];
-                  eventTrigger_samqiao_payload.yij = relaVar[agent_id].S[STATE_rlY];
-                  eventTrigger_samqiao_payload.rij = relaVar[agent_id].S[STATE_rlYaw];
+            // Logging event for the relative localization variable
+            // eventTrigger_samqiao_payload.AGENT_ID = AGENT_ID;
+            if(agent_id == 1){
+              eventTrigger_samqiao_payload.xij = relaVar[agent_id].S[STATE_rlX];
+              eventTrigger_samqiao_payload.yij = relaVar[agent_id].S[STATE_rlY];
+              eventTrigger_samqiao_payload.rij = relaVar[agent_id].S[STATE_rlYaw];
 
-                  eventTrigger(&eventTrigger_samqiao);
-                  eventTrigger(&eventTrigger_rAgent);
-                  eventTrigger(&eventTrigger_lAgent);
-                  eventTrigger(&eventTrigger_interRange);
-                }
-              }else{
-                // [Sam] In the case where I cannot get the info from the remote agent
-                relaVar[agent_id].oldTimetick = xTaskGetTickCount();
-                relaVar[agent_id].receiveFlag = true;
-                fullConnect = true;
-              }
+              eventTrigger(&eventTrigger_samqiao);
+              eventTrigger(&eventTrigger_rAgent);
+              eventTrigger(&eventTrigger_lAgent);
+              eventTrigger(&eventTrigger_interRange);
             }
+          }else{
+            // [Sam] In the case where I cannot get the info from the remote agent
+            relaVar[agent_id].oldTimetick = xTaskGetTickCount();
+            relaVar[agent_id].receiveFlag = true;
+            fullConnect = true;
           }
-
+        }
+          // }
         // Increment the counter
         connectCount++;
         if(connectCount>100){
