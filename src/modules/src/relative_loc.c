@@ -36,8 +36,8 @@
 #include "task.h"
 
 #include "param.h"
-
 #include "log.h"
+#include "crc32.h"
 #include "system.h"
 
 #include <radiolink.h>
@@ -50,7 +50,7 @@
 EVENTTRIGGER(samqiao, float, xij, float, yij, float, rij);
 EVENTTRIGGER(rAgent, float, rAgent_vx, float, rAgent_vy, float, rAgent_yr, float, rAgent_h)      // remote agent
 EVENTTRIGGER(lAgent, float, lAgent_vx, float, lAgent_vy, float, lAgent_yr, float, lAgent_h)      // local  agent
-EVENTTRIGGER(interRange, float, inter_ranging) // interrange
+EVENTTRIGGER(interRange, float, inter_ranging, float, pxij, float, pyij, float, prij) // interrange and covariance
 static bool isInit;
 
 
@@ -61,7 +61,7 @@ static bool isInit;
 static float Qv = 0.01f; // velocity deviation
 static float Qr = 0.01f; // yaw rate deviation
 static float Ruwb = 0.1f; // ranging deviation changed from 2.0f
-static float InitCovPos = 0.05f;
+static float InitCovPos = 0.01f;
 static float InitCovYaw = 0.01f;
 
 // // Shuai's parameters
@@ -112,6 +112,9 @@ static arm_matrix_instance_f32 PHTm = {STATE_DIM_rl, 1, PHTd};
 
 // A flag for control (fly or not)
 static bool fullConnect = false;
+
+// A flag to start/end relative localization
+static bool enableRL = false;
 
 // A watchdog for detecting the connection
 static int8_t connectCount = 0;
@@ -172,9 +175,9 @@ void relativeLocoTask(void* arg){
         if(n == 0){
             relaVar[n].S[STATE_rlX] = 0.0;
         }else{ //n = 1
-          if(AGENT_ID == 10){
+          if(AGENT_ID == 10){ // A
               relaVar[n].S[STATE_rlX] = -2.0;
-          }else if(AGENT_ID == 11){
+          }else if(AGENT_ID == 11){// B
               relaVar[n].S[STATE_rlX] = 2.0;
           }else{
             relaVar[n].S[STATE_rlX] = 0.0;
@@ -191,7 +194,11 @@ void relativeLocoTask(void* arg){
     // The main while loop that executes the EKF
     while(1){
         //first delay a little bit
-        vTaskDelay(10);
+        vTaskDelay(20);
+        if(!enableRL){
+          continue;
+        }
+        // DEBUG_PRINT("Start relative localization!!!!!!!!!!!!!!!.\n");
         int agent_id = 1;
         // for(int agent_id=1;agent_id<NumAgent;agent_id++){
         // We need to get remote agent body frame velocity and yaw rates 
@@ -240,6 +247,11 @@ void relativeLocoTask(void* arg){
               eventTrigger_samqiao_payload.yij = relaVar[agent_id].S[STATE_rlY];
               eventTrigger_samqiao_payload.rij = relaVar[agent_id].S[STATE_rlYaw];
 
+              // covariance
+              eventTrigger_interRange_payload.pxij = relaVar[agent_id].P[STATE_rlX][STATE_rlX];
+              eventTrigger_interRange_payload.pyij = relaVar[agent_id].P[STATE_rlY][STATE_rlY];
+              eventTrigger_interRange_payload.prij = relaVar[agent_id].P[STATE_rlYaw][STATE_rlYaw];
+
               eventTrigger(&eventTrigger_samqiao);
               eventTrigger(&eventTrigger_rAgent);
               eventTrigger(&eventTrigger_lAgent);
@@ -255,10 +267,12 @@ void relativeLocoTask(void* arg){
           // }
         // Increment the counter
         connectCount++;
+
         if(connectCount>100){
             // disable control if there is no ranging after 1 sec
             fullConnect = false;
         }
+      
     }
 }
 
@@ -417,13 +431,15 @@ LOG_ADD(LOG_FLOAT, rlYaw1, &relaVar[1].S[STATE_rlYaw])
 LOG_GROUP_STOP(relative_pos)
 
 // Log the initial covariance parameters
-PARAM_GROUP_START(arelative_pos)
-PARAM_ADD(PARAM_FLOAT, noiFlow, &Qv) // make sure the name is not too long
-PARAM_ADD(PARAM_FLOAT, noiGyroZ, &Qr)
-PARAM_ADD(PARAM_FLOAT, noiUWB, &Ruwb)
-PARAM_ADD(PARAM_FLOAT, Ppos, &InitCovPos)
-PARAM_ADD(PARAM_FLOAT, Pyaw, &InitCovYaw)
-PARAM_GROUP_STOP(arelative_pos)
+// PARAM_GROUP_START(arelative_pos)
+// PARAM_ADD(PARAM_FLOAT, noiFlow, &Qv) // make sure the name is not too long
+// PARAM_ADD(PARAM_FLOAT, noiGyroZ, &Qr)
+// PARAM_ADD(PARAM_FLOAT, noiUWB, &Ruwb)
+// PARAM_ADD(PARAM_FLOAT, Ppos, &InitCovPos)
+// PARAM_ADD(PARAM_FLOAT, Pyaw, &InitCovYaw)
+// PARAM_GROUP_STOP(arelative_pos)
 
-
+PARAM_GROUP_START(rl_param)
+PARAM_ADD_CORE(PARAM_UINT8, start_rl, &enableRL) /* use to start/stop logging*/
+PARAM_GROUP_STOP(rl_param)
 

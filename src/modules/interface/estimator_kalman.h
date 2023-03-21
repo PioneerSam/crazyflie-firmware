@@ -65,6 +65,7 @@ bool estimatorKalmanTaskTest();
 
 void estimatorKalmanGetEstimatedPos(point_t* pos);
 
+void estimatorKalmanGetEstimatedRot(float * rotationMatrix);
 /**
  * Copies 9 floats representing the current state rotation matrix
  */
