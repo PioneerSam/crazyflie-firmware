@@ -61,8 +61,8 @@ static bool isInit;
 static float Qv = 0.01f; // velocity deviation
 static float Qr = 0.01f; // yaw rate deviation
 static float Ruwb = 0.1f; // ranging deviation changed from 2.0f
-static float InitCovPos = 0.01f;
-static float InitCovYaw = 0.01f;
+static float InitCovPos = 0.05f;
+static float InitCovYaw = 0.05f;
 
 // // Shuai's parameters
 // static float Qv = 1.0f; // velocity deviation
